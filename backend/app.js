@@ -13,6 +13,10 @@ const userRoutes = require("./routes/userRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
 
+// Import access control models and middleware
+const AccessControl = require("./models/AccessControl");
+const { isAuthenticated, isAdmin } = require("./middleware/auth");
+
 mongoose.connect(
   "mongodb+srv://prakharb2k6:" +
     process.env.MONGOPASS +
@@ -24,6 +28,31 @@ app.use(cors());
 app.use(morgan("dev")); //middleware that logs requests to the console
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+// Add a route to check authentication status and role
+app.get("/auth/status", isAuthenticated, (req, res) => {
+  res.json({
+    authenticated: true,
+    user: {
+      user_id: req.user.user_id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role,
+    },
+  });
+});
+
+// Add a route to check if user is admin
+app.get("/auth/admin", isAuthenticated, isAdmin, (req, res) => {
+  res.json({
+    isAdmin: true,
+    user: {
+      user_id: req.user.user_id,
+      name: req.user.name,
+      email: req.user.email,
+    },
+  });
+});
 
 app.use("/users", userRoutes);
 app.use("/categories", categoryRoutes);
@@ -64,7 +93,7 @@ app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*"); //(Initially it was Not-Allowed but now we set it to Allowed, these headers need a value so we give * as a value so that all the URLs are allowed - you could also give https://devsoc.club but typically RESTful APIs allow all the URLs to have access!)
   res.header(
     "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization, user_id, password"
   ); //these are some of the default headers than need to be added in order to avoid the CORS error, you can read about each one of them online
   if (req.method === "OPTIONS") {
     //whenever you send a GET, DELETE, PATCH, POST, or a PUT request, the browser always responds with an OPTIONS method which is inevitable, thus, to overcome this, we set a custom header for this too
